@@ -16,6 +16,12 @@ var runSequence = require('run-sequence');
 var sass = require('gulp-sass');
 var webpack = require('webpack');
 
+// [AA] 2015/09/01
+var stylus = require('gulp-stylus');
+var plumber = require('gulp-plumber');
+var notify = require('gulp-notify');
+
+
 
 // configuration
 var config = {
@@ -27,7 +33,7 @@ var config = {
 		},
 		styles: {
 			fabricator: 'src/assets/fabricator/styles/fabricator.scss',
-			toolkit: 'src/assets/toolkit/styles/toolkit.scss'
+			toolkit: 'src/assets/toolkit/styles/toolkit.styl'
 		},
 		images: 'src/assets/toolkit/images/**/*',
 		views: 'src/toolkit/views/*.html'
@@ -60,11 +66,17 @@ gulp.task('styles:fabricator', function () {
 
 gulp.task('styles:toolkit', function () {
 	return gulp.src(config.src.styles.toolkit)
-		.pipe(sass().on('error', sass.logError))
+		// .pipe(sass().on('error', sass.logError))
+		.pipe(plumber({ errorHandler: notify.onError("Error: <%= error.message %>")}))
+		.pipe(stylus({
+			errors: true,
+			'include css': true
+		}))
 		.pipe(prefix('last 1 version'))
 		.pipe(gulpif(!config.dev, csso()))
 		.pipe(gulp.dest(config.dest + '/assets/toolkit/styles'))
-		.pipe(gulpif(config.dev, reload({stream:true})));
+		.pipe(gulpif(config.dev, reload({stream:true})))
+		.pipe(notify('css up!'));
 });
 
 gulp.task('styles', ['styles:fabricator', 'styles:toolkit']);
@@ -75,6 +87,7 @@ gulp.task('scripts', function (done) {
 	webpackCompiler.run(function (error, result) {
 		if (error) {
 			gutil.log(gutil.colors.red(error));
+			notify.onError(error)
 		}
 		result = result.toJson();
 		if (result.errors.length) {
@@ -146,7 +159,7 @@ gulp.task('serve', function () {
 	gulp.watch('src/assets/fabricator/styles/**/*.scss', ['styles:fabricator:watch']);
 
 	gulp.task('styles:toolkit:watch', ['styles:toolkit'], reload);
-	gulp.watch('src/assets/toolkit/styles/**/*.scss', ['styles:toolkit:watch']);
+	gulp.watch('src/assets/toolkit/styles/**/*.styl', ['styles:toolkit:watch']);
 
 	gulp.task('scripts:watch', ['scripts'], reload);
 	gulp.watch('src/assets/{fabricator,toolkit}/scripts/**/*.js', ['scripts:watch']).on('change', webpackCache);
